@@ -76,17 +76,19 @@ if st.sidebar.button("Run Scan"):
         ml_df = ml_df.reindex(columns=cols)
 
         st.markdown("### Results")
+        ml_df["TradingView"] = ml_df["Ticker"].apply(lambda t: tradingview_link(t))
 
     # Convert TradingView HTML link to Markdown clickable link
-        ml_df["TradingView"] = ml_df["TradingView"].str.replace( r'<a href="(.*?)" target="_blank">Chart</a>',r'[\g<0>](\1)', regex=True  )
+       # ml_df["TradingView"] = ml_df["TradingView"].str.replace( r'<a href="(.*?)" target="_blank">Chart</a>',r'[\g<0>](\1)', regex=True  )
 
     # Show interactive table with sorting
         st.dataframe(
-            ml_df,
-            column_config={
+        ml_df,
+        column_config={
             "TradingView": st.column_config.LinkColumn("TradingView", display_text="Chart")
         },
-        use_container_width=True   )
+        use_container_width=True
+    )
 
     # Download option remains same
         st.download_button("Download CSV", data=ml_df.to_csv(index=False), file_name="scan_results.csv", mime="text/csv")
