@@ -33,12 +33,16 @@ if file is not None:
 
 if st.sidebar.button("Run Scan"):
     rows = []
+    acc_list = [] 
     progress = st.progress(0.0)
     for i, t in enumerate(tickers, start=1):
         try:
             df = fetch_ohlcv(t, period=period, interval="1d")
             idf = compute_indicators(df)
             clf, acc, proba = train_predict(idf)
+            if acc is not None:   # ✅ store accuracy
+                acc_list.append(acc)
+            
 
             w_daily = label_waves(idf["Close"])
             df_w = resample_to_weekly(idf[["Open","High","Low","Close","Volume"]])
