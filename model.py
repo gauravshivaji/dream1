@@ -75,7 +75,7 @@ def train_predict(df: pd.DataFrame):
     except Exception:
         p_sell = p_hold = p_buy = None
 
-    rec = "Buy" if (p_buy or 0) > max(p_sell or 0, p_hold or 0) else \
-          ("Sell" if (p_sell or 0) > max(p_buy or 0, p_hold or 0) else "Hold")
+    rec = "Sell" if (p_buy or 0) > max(p_sell or 0, p_hold or 0) else \
+          ("Buy" if (p_sell or 0) > max(p_buy or 0, p_hold or 0) else "Hold")
 
     return clf, acc, {"p_buy": p_buy, "p_sell": p_sell, "p_hold": p_hold, "rec": rec}
