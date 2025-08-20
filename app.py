@@ -70,16 +70,32 @@ if st.sidebar.button("Run Scan"):
 
     ml_df = pd.DataFrame(rows)
     if not ml_df.empty:
-        cols = ["Ticker","Price","TradingView","Prob_Buy","Prob_Sell","ML_Recommendation",
-                "Daily_Wave","Daily_State","Weekly_Wave","Weekly_State",
-                "RSI_Divergence","TripleSMA_Signal","Support","Resistance","Trend"]
-        ml_df = ml_df.reindex(columns=cols)
-        st.markdown("### Results")
-       
-        st.write(ml_df.to_html(escape=False), unsafe_allow_html=True)
+    cols = ["Ticker","Price","TradingView","Prob_Buy","Prob_Sell","ML_Recommendation",
+            "Daily_Wave","Daily_State","Weekly_Wave","Weekly_State",
+            "RSI_Divergence","TripleSMA_Signal","Support","Resistance","Trend"]
+    ml_df = ml_df.reindex(columns=cols)
 
-        st.download_button("Download CSV", data=ml_df.to_csv(index=False), file_name="scan_results.csv", mime="text/csv")
-    else:
+    st.markdown("### Results")
+
+    # Convert TradingView HTML link to Markdown clickable link
+    ml_df["TradingView"] = ml_df["TradingView"].str.replace(
+        r'<a href="(.*?)" target="_blank">Chart</a>',
+        r'[\g<0>](\1)', 
+        regex=True
+    )
+
+    # Show interactive table with sorting
+    st.dataframe(
+        ml_df,
+        column_config={
+            "TradingView": st.column_config.LinkColumn("TradingView", display_text="Chart")
+        },
+        use_container_width=True
+    )
+
+    # Download option remains same
+    st.download_button("Download CSV", data=ml_df.to_csv(index=False), file_name="scan_results.csv", mime="text/csv")
+  else:
         st.warning("No results.")
 else:
     st.write("➡️ Configure settings and click **Run Scan**.")
