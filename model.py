@@ -68,7 +68,7 @@ def train_predict(df: pd.DataFrame):
     y = y_all.reindex(feats.index).dropna()
     X = feats.reindex(y.index)
 
-    if len(X) < 300 or y.nunique() < 2:
+    if len(X) < 100 or y.nunique() < 2:  # require min data + >1 class
         return None, None, None
 
     # Handle class imbalance
@@ -80,12 +80,15 @@ def train_predict(df: pd.DataFrame):
     class_weight_dict = {cls: weight for cls, weight in zip(np.unique(y), class_weights)}
 
     # Train-Test split
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=(y != 0).astype(int)
-    )
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y
+        )
+    except ValueError:
+        return None, None, None
 
     clf = RandomForestClassifier(
-        n_estimators=N_ESTIMATORS * 2,   # more trees
+        n_estimators=N_ESTIMATORS * 2,
         max_depth=MAX_DEPTH if MAX_DEPTH else None,
         random_state=RANDOM_STATE,
         class_weight=class_weight_dict,
@@ -95,16 +98,25 @@ def train_predict(df: pd.DataFrame):
         bootstrap=True
     )
 
-    # Cross-validation accuracy (more robust than single split)
-    cv_scores = cross_val_score(clf, X, y, cv=5, scoring="accuracy")
-    cv_acc = cv_scores.mean()
+    # Cross-validation (only if enough samples)
+    cv_acc = None
+    if len(X) >= 5:
+        try:
+            cv_scores = cross_val_score(clf, X, y, cv=min(5, len(y)), scoring="accuracy")
+            cv_acc = np.nanmean(cv_scores)
+        except Exception:
+            pass
 
+    # Train & test
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
     test_acc = accuracy_score(y_test, y_pred)
 
-    # Final accuracy = blend of CV + test
-    acc = (0.7 * cv_acc) + (0.3 * test_acc)
+    # Final accuracy
+    if cv_acc is not None and not np.isnan(cv_acc):
+        acc = (0.7 * cv_acc) + (0.3 * test_acc)
+    else:
+        acc = test_acc
 
     # Prediction for last row
     X_last = X.iloc[[-1]]
@@ -120,4 +132,4 @@ def train_predict(df: pd.DataFrame):
     rec = "Buy" if (p_buy or 0) > max(p_sell or 0, p_hold or 0) else \
           ("Sell" if (p_sell or 0) > max(p_buy or 0, p_hold or 0) else "Hold")
 
-    return clf, acc, {"p_buy": p_buy, "p_sell": p_sell, "p_hold": p_hold, "rec": rec}
+    return clf, round(acc, 4), {"p_buy": p_buy, "p_sell": p_sell, "p_hold": p_hold, "rec": rec}
