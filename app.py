@@ -73,24 +73,16 @@ if st.sidebar.button("Run Scan"):
         cols = ["Ticker","Price","TradingView","Prob_Buy","Prob_Sell","ML_Recommendation",
                 "Daily_Wave","Daily_State","Weekly_Wave","Weekly_State",
                 "RSI_Divergence","TripleSMA_Signal","Support","Resistance","Trend"]
+    ml_df = pd.DataFrame(rows)
+    if not ml_df.empty:
+        cols = ["Ticker","Price","TradingView","Prob_Buy","Prob_Sell","ML_Recommendation",
+                "Daily_Wave","Daily_State","Weekly_Wave","Weekly_State",
+                "RSI_Divergence","TripleSMA_Signal","Support","Resistance","Trend"]
         ml_df = ml_df.reindex(columns=cols)
         st.markdown("### Results")
-        
-        st.data_editor(
-            ml_df,
-            column_config={
-                "TradingView": st.column_config.LinkColumn("TradingView Chart")
-            },
-            use_container_width=True,
-            hide_index=True,
-            disabled=ml_df.columns  # makes all cells read-only
-        ) 
-        st.download_button(
-            "Download CSV",
-            data=ml_df.to_csv(index=False),
-            file_name="scan_results.csv",
-            mime="text/csv"
-        )
-        
+        st.write(ml_df.to_html(escape=False), unsafe_allow_html=True)
+        st.download_button("Download CSV", data=ml_df.to_csv(index=False), file_name="scan_results.csv", mime="text/csv")
     else:
         st.warning("No results.")
+else:
+    st.write("➡️ Configure settings and click **Run Scan**.")
