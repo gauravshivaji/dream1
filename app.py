@@ -75,8 +75,7 @@ if st.sidebar.button("Run Scan"):
                 "RSI_Divergence","TripleSMA_Signal","Support","Resistance","Trend"]
         ml_df = ml_df.reindex(columns=cols)
         st.markdown("### Results")
-        ml_df["TradingView"] = ml_df["TradingView"].apply(
-        lambda x: x.replace("Chart</a>", "🔗 Chart</a>")  )
+        
         st.data_editor(
             ml_df,
             column_config={
