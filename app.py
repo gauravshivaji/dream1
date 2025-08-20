@@ -91,7 +91,7 @@ if st.sidebar.button("Run Scan"):
     # Download option remains same
         st.download_button("Download CSV", data=ml_df.to_csv(index=False), file_name="scan_results.csv", mime="text/csv")
     
-  else:
+    else:
         st.warning("No results.")
 else:
     st.write("➡️ Configure settings and click **Run Scan**.")
