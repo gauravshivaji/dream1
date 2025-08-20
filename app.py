@@ -75,7 +75,13 @@ if st.sidebar.button("Run Scan"):
                 "RSI_Divergence","TripleSMA_Signal","Support","Resistance","Trend"]
         ml_df = ml_df.reindex(columns=cols)
         st.markdown("### Results")
-        st.write(ml_df.to_html(escape=False), unsafe_allow_html=True)
+        st.dataframe(ml_df.style.format({
+        "Price": "{:.2f}",
+        "Prob_Buy": "{:.1f}%",
+        "Prob_Sell": "{:.1f}%",
+        "Support": "{:.2f}",
+        "Resistance": "{:.2f}"
+    }), height=600)
         st.download_button("Download CSV", data=ml_df.to_csv(index=False), file_name="scan_results.csv", mime="text/csv")
     else:
         st.warning("No results.")
