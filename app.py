@@ -75,9 +75,21 @@ if st.sidebar.button("Run Scan"):
                 "RSI_Divergence","TripleSMA_Signal","Support","Resistance","Trend"]
         ml_df = ml_df.reindex(columns=cols)
         st.markdown("### Results")
-        st.write(ml_df.to_html(escape=False), unsafe_allow_html=True)
-        st.download_button("Download CSV", data=ml_df.to_csv(index=False), file_name="scan_results.csv", mime="text/csv")
+        st.data_editor(
+            ml_df,
+            column_config={
+                "TradingView": st.column_config.LinkColumn("TradingView Chart")
+            },
+            use_container_width=True,
+            hide_index=True,
+            disabled=ml_df.columns  # makes all cells read-only
+        ) 
+        st.download_button(
+            "Download CSV",
+            data=ml_df.to_csv(index=False),
+            file_name="scan_results.csv",
+            mime="text/csv"
+        )
+        
     else:
         st.warning("No results.")
-else:
-    st.write("➡️ Configure settings and click **Run Scan**.")
