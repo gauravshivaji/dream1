@@ -81,7 +81,7 @@ if st.sidebar.button("Run Scan"):
         ml_df = ml_df.reindex(columns=cols)
         
         st.markdown("### Results")
-            ml_df["TradingView"] = ml_df["TradingView"].apply(lambda x: x.replace("Chart</a>", "🔗 Chart</a>")   )
+        ml_df["TradingView"] = ml_df["TradingView"].apply(lambda x: x.replace("Chart</a>", "🔗 Chart</a>")   )
         st.dataframe(
         ml_df,
         use_container_width=True,
