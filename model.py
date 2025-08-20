@@ -1,4 +1,4 @@
-
+# model.py
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -18,6 +18,7 @@ def make_features(df: pd.DataFrame) -> pd.DataFrame:
     out["ret_1d"] = out["Close"].pct_change(1)
     out["ret_5d"] = out["Close"].pct_change(5)
     out["ret_20d"] = out["Close"].pct_change(20)
+
     if len(sma_cols) >= 3:
         out["sma_gap_fast_mid"] = (out[sma_cols[0]] - out[sma_cols[1]]) / out["Close"]
         out["sma_gap_mid_slow"] = (out[sma_cols[1]] - out[sma_cols[2]]) / out["Close"]
@@ -26,38 +27,55 @@ def make_features(df: pd.DataFrame) -> pd.DataFrame:
         out["sma_gap_fast_mid"] = np.nan
         out["sma_gap_mid_slow"] = np.nan
         out["dist_to_slow_sma"] = np.nan
+
     out["vol_norm"] = (out["Volume"] - out["Volume"].rolling(20).mean()) / out["Volume"].rolling(20).std()
+    # avoid infs from zero std
+    out["vol_norm"] = out["vol_norm"].replace([np.inf, -np.inf], np.nan)
     return out
 
 def make_labels(df: pd.DataFrame) -> pd.Series:
     fwd = df["Close"].shift(-LABEL_HORIZON) / df["Close"] - 1.0
-    y = fwd.copy() * 0
+    y = pd.Series(index=df.index, dtype="float64")
     y[fwd >= BUY_THRESHOLD] = 1
     y[fwd <= SELL_THRESHOLD] = -1
     y[(fwd < BUY_THRESHOLD) & (fwd > SELL_THRESHOLD)] = 0
+    # drop unlabeled tail instead of casting NaN -> int
+    y = y.iloc[:-LABEL_HORIZON].dropna()
     return y.astype(int)
 
 def train_predict(df: pd.DataFrame):
-    data = df.dropna().copy()
-    y_all = make_labels(data)
-    X_all = make_features(data)[FEATURE_COLUMNS].dropna()
-    y = y_all.loc[X_all.index]
-    if len(X_all) < 200 or y.nunique() < 2:
+    # build features first, then align to non-NaN rows
+    feats = make_features(df)[FEATURE_COLUMNS]
+    feats = feats.dropna()
+
+    # labels computed on the same df; subset to feat index, then drop any NaNs
+    y_all = make_labels(df)
+    y = y_all.reindex(feats.index).dropna()
+    X = feats.reindex(y.index)
+
+    if len(X) < 200 or y.nunique() < 2:
         return None, None, None
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_all, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=(y!=0).astype(int)
-    )
+
     clf = RandomForestClassifier(n_estimators=N_ESTIMATORS, max_depth=MAX_DEPTH, random_state=RANDOM_STATE)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=(y != 0).astype(int)
+    )
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
+
+    # predict probabilities for the latest available row with a label-able index
+    X_last = X.iloc[[-1]]
     try:
-        proba = clf.predict_proba(X_all.iloc[[-1]]).flatten()
-        class_to_idx = {c:i for i,c in enumerate(clf.classes_)}
-        p_sell = proba[class_to_idx.get(-1, 0)]
-        p_hold = proba[class_to_idx.get(0, 1)]
-        p_buy  = proba[class_to_idx.get(1, 2)]
+        proba = clf.predict_proba(X_last).flatten()
+        class_to_idx = {c: i for i, c in enumerate(clf.classes_)}
+        p_sell = float(proba[class_to_idx.get(-1, 0)])
+        p_hold = float(proba[class_to_idx.get(0, 1)])
+        p_buy  = float(proba[class_to_idx.get(1, 2)])
     except Exception:
         p_sell = p_hold = p_buy = None
-    rec = "Buy" if (p_buy or 0) > max(p_sell or 0, p_hold or 0) else "Sell" if (p_sell or 0) > max(p_buy or 0, p_hold or 0) else "Hold"
+
+    rec = "Buy" if (p_buy or 0) > max(p_sell or 0, p_hold or 0) else \
+          ("Sell" if (p_sell or 0) > max(p_buy or 0, p_hold or 0) else "Hold")
+
     return clf, acc, {"p_buy": p_buy, "p_sell": p_sell, "p_hold": p_hold, "rec": rec}
